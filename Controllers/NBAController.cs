@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Cors;
+using Microsoft.AspNetCore.Mvc;
 using NBAProcessingAPI.Models.NBAAPIResponse;
 using NBAProcessingAPI.Models.Shared;
 using NBAProcessingAPI.Services;
@@ -17,6 +18,7 @@ namespace NBAProcessingAPI.Controllers
         private readonly string API_KEY = "1234";
         private readonly string VERSION = "0.0.1";
 
+        [EnableCors("GoodrPolicy")]
         [HttpGet]
         public IActionResult Get(int season, int teamOneId, int teamTwoId, string key)
         {

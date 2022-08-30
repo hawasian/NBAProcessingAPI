@@ -5,7 +5,7 @@ namespace NBAProcessingAPI.Services
     public class NBAService
     {
         private readonly string SERVICE_HOST = "api-nba-v1.p.rapidapi.com";
-        private readonly string SERVICE_KEY = "0bc50516e8msh6a510fc2b729d03p194455jsn5ebebdca214aXXX";
+        private readonly string SERVICE_KEY = "0bc50516e8msh6a510fc2b729d03p194455jsn5ebebdca214a";
         
         private RestClient client;
         
