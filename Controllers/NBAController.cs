@@ -18,48 +18,107 @@ namespace NBAProcessingAPI.Controllers
         private readonly string VERSION = "0.0.1";
 
         [HttpGet]
-        public IActionResult Get(int season, int teamOneId, int teamTwoId, string? key)
+        public IActionResult Get(int season, int teamOneId, int teamTwoId, string key)
         {
-            //TODO IMP API KEY
-            /*
-                Codes to Consider
-                400-Bad Request
-                429-Too Many Requests
-                500-Internal Server Error
-             */
-            if(string.IsNullOrEmpty(key))
-            {
-                //401-Unauthorized
-                return Unauthorized();
+            try{
+                if (string.IsNullOrEmpty(key))
+                {
+                    //401-Unauthorized
+                    var _resp = new GenericAPIResponse<string>()
+                    {
+                        Version = VERSION,
+                        Message = "Unauthorized Request",
+                        Status = 401,
+                        Content = "Unauthorized Request"
+                    };
+                    return StatusCode(401, _resp);
+                }
+                if (key != API_KEY)
+                {
+                    //403-Forbidden
+                    var _resp = new GenericAPIResponse<string>()
+                    {
+                        Version = VERSION,
+                        Message = "Request Forbidden",
+                        Status = 403,
+                        Content = "Request Forbidden"
+                    };
+                    return StatusCode(403, _resp);
+                }
+                RestResponse response = _NBAService.FetchRecord(season, teamOneId, teamTwoId);
+                var _responseStatus = response.ResponseStatus;
+                if (_responseStatus == ResponseStatus.Error)
+                {
+                    var _resp = new GenericAPIResponse<string>()
+                    {
+                        Version = VERSION,
+                        Message = "Failed to Fetch",
+                        Status = 500,
+                        Content = "Failed to Fetch"
+                    };
+                    return StatusCode(500, _resp);
+                }
+                if (_responseStatus == ResponseStatus.TimedOut)
+                {
+                    var _resp = new GenericAPIResponse<string>()
+                    {
+                        Version = VERSION,
+                        Message = "External API Timeout",
+                        Status = 500,
+                        Content = "External API Timeout"
+                    };
+                    return StatusCode(500, _resp);
+                }
+                string cache = response.Content ?? "";
+                NBAGetResponse resp = new NBAGetResponse();
+                try
+                {
+                    resp = Newtonsoft.Json.JsonConvert.DeserializeObject<NBAGetResponse>(cache) ?? new NBAGetResponse();
+                }
+                catch
+                {
+                    var _resp = new GenericAPIResponse<string>()
+                    {
+                        Version = VERSION,
+                        Message = "Failed to Deserialize Response",
+                        Status = 500,
+                        Content = "Failed to Deserialize Response"
+                    };
+                    return StatusCode(500, _resp);
+                }
+                var _data = resp.Response.Select(r => new NBAReturnStats()
+                {
+                    Date = DateTime.Parse(r.Date.Start),
+                    Home = r.Teams.Home.Code,
+                    Visitor = r.Teams.Visitors.Code,
+                    HomeScore = r.Scores.Home.Points ?? 0,
+                    VisitorScore = r.Scores.Visitors.Points ?? 0
+                }).ToList();
+                var output = new GenericAPIResponse<NBAStatPayload>();
+                output.Version = VERSION;
+                output.Status = 200;
+                output.Content = new NBAStatPayload() { Data = _data };
+                if (_data.Count == 0)
+                {
+                    output.Message = "No Games Found";
+                }
+                else
+                {
+                    output.Message = $"{_data.Count} Games Found";
+                }
+                return Ok(output);
             }
-            if (key != API_KEY)
+            catch(Exception e)
             {
-                //403-Forbidden
-                return StatusCode(403);
+                var _resp = new GenericAPIResponse<string>()
+                {
+                    Version = VERSION,
+                    Message = "Something went wrong",
+                    Status = 500,
+                    Content = e.Message
+                };
+                return StatusCode(500, _resp);
             }
-            RestResponse response = _NBAService.FetchRecord(season, teamOneId, teamTwoId);
-            var x = response.StatusCode;
-            string cache = response.Content ?? "";
-            NBAGetResponse resp = Newtonsoft.Json.JsonConvert.DeserializeObject<NBAGetResponse>(cache) ?? new NBAGetResponse();
-            var _data = resp.Response.Select(r => new NBAReturnStats() { 
-                Date = DateTime.Parse(r.Date.Start),
-                Home = r.Teams.Home.Code,
-                Visitor = r.Teams.Visitors.Code,
-                HomeScore = r.Scores.Home.Points ?? 0,
-                VisitorScore = r.Scores.Visitors.Points ?? 0
-            }).ToList();
-            var output = new GenericAPIResponse<NBAStatPayload>();
-            output.Version = VERSION;
-            output.Status = 200;
-            output.Content = new NBAStatPayload() {Data = _data};
-            if(_data.Count == 0)
-            {
-                output.Message = "No Games Found";
-            }else
-            {
-                output.Message = $"{_data.Count} Games Found";
-            }
-            return Ok(output);
         }
 
 
